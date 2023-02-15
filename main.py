@@ -16,21 +16,40 @@ def main():
 
     # print(get_first_language_vacansies(url, payload))  # сумма вакансий по каждому из 10-ти первых языкав
 
-    language = 'Python'  # сумма вакансий по языку и зарплаты (первые 20 вакансий)
-    vacancies = get_some_language_salary(language, url, payload).json()
-    for vacancy in vacancies['items']:
-        if vacancy['salary']:
-            print(f"{vacancy['name']}, {predict_rub_salary(vacancy)} RUR")
-        else:
-            print(f"{vacancy['name']}, SALARY IS NOT SPECIFIED")
+    # сумма вакансий по языку и зарплаты (первые 20 вакансий)
+    print(get_all_lang_average_salary(url, payload))
 
-        # print(f"{vacancy['name']}, {salary_from}, {salary_to}, 'RUR(from {vacancy['salary']['currency']})'")
-        # print(f"{vacancy['name']}, {vacancy['salary']['from']}, {vacancy['salary']['to']}
-        # {vacancy['salary']['currency']}")
 
-        # if vacancy['salary']:
-        #     print(f"{vacancy['name']}, {vacancy['salary']['from']}, {vacancy['salary']['to']}"
-        #           f"{vacancy['salary']['currency']}")
+def get_all_lang_average_salary(url, payload):
+    language_salary = {}
+    for language in programming_languages:
+        vacancies = get_some_language_salary(language, url, payload).json()
+        avg_salary_sum = 0
+        avg_salary_count = 0
+        for vacancy in vacancies['items']:
+            if vacancy['salary']:
+                avg_salary_sum += predict_rub_salary(vacancy)
+                avg_salary_count += 1
+        language_salary[language] = {
+            "vacancies_found": vacancies['found'],
+            "vacancies_processed": avg_salary_count,
+            "average_salary": int(avg_salary_sum/avg_salary_count)
+        }
+    return language_salary
+
+# for vacancy in vacancies['items']:
+#     if vacancy['salary']:
+#         print(f"{vacancy['name']}, {predict_rub_salary(vacancy)} RUR")
+#     else:
+#         print(f"{vacancy['name']}, SALARY IS NOT SPECIFIED")
+
+# print(f"{vacancy['name']}, {salary_from}, {salary_to}, 'RUR(from {vacancy['salary']['currency']})'")
+# print(f"{vacancy['name']}, {vacancy['salary']['from']}, {vacancy['salary']['to']}
+# {vacancy['salary']['currency']}")
+
+# if vacancy['salary']:
+#     print(f"{vacancy['name']}, {vacancy['salary']['from']}, {vacancy['salary']['to']}"
+#           f"{vacancy['salary']['currency']}")
 
 
 def predict_rub_salary(vacancy):
