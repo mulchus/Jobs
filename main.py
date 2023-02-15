@@ -1,4 +1,5 @@
 import requests
+import json
 
 from settings import programming_languages
 
@@ -14,26 +15,25 @@ def main():
         'per_page': 100,
     }
 
-    print(get_all_lang_average_salary(url, payload))
+    print(json.dumps((get_all_lang_average_salary(url, payload)), indent=4, ensure_ascii=False))
 
 
 def get_all_lang_average_salary(url, payload):
     language_count_salary = {}
     for language in programming_languages:
         payload['text'] = language
-        print(language)
+        # print(language)
         vacancies = get_vacancies(url, payload).json()
-        avg_salary_sum = 0
-        avg_salary_count = 0
+        avg_salary_sum = avg_salary_count = 0
         # print(vacancies['pages'])
         for page in range(vacancies['pages']):
             payload['page'] = page
             vacancies = get_vacancies(url, payload).json()
+            # print(json.dumps(vacancies, indent=4, sort_keys=True, ensure_ascii=False))
             for vacancy in vacancies['items']:
                 if vacancy['salary']:
                     avg_salary_sum += predict_rub_salary(vacancy)
                     avg_salary_count += 1
-
         language_count_salary[language] = {
             "vacancies_found": vacancies['found'],
             "vacancies_processed": avg_salary_count,
