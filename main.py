@@ -1,5 +1,5 @@
 import requests
-# import numpy as np
+import json
 
 from settings import programming_languages
 
@@ -7,49 +7,39 @@ from settings import programming_languages
 def main():
     url = 'https://api.hh.ru/vacancies'
     payload = {
-        # 'User-Agent' : 'MyApp/1.0',
+        'User-Agent': 'MyApp/1.0',
         'text': 'Python',
-        'search_fields': 'name',
+        'search_field': ["name"],  # , "description" надо поиграться с поиском по конкретным полям, ищет где попало
         'area': 1,
         'period': 30,
+        'per_page': 100,
     }
 
-    # print(get_first_language_vacansies(url, payload))  # сумма вакансий по каждому из 10-ти первых языкав
-
-    # сумма вакансий по языку и зарплаты (первые 20 вакансий)
-    print(get_all_lang_average_salary(url, payload))
+    print(json.dumps((get_all_lang_average_salary(url, payload)), indent=4, ensure_ascii=False))
 
 
 def get_all_lang_average_salary(url, payload):
-    language_salary = {}
+    language_count_salary = {}
     for language in programming_languages:
-        vacancies = get_some_language_salary(language, url, payload).json()
-        avg_salary_sum = 0
-        avg_salary_count = 0
-        for vacancy in vacancies['items']:
-            if vacancy['salary']:
-                avg_salary_sum += predict_rub_salary(vacancy)
-                avg_salary_count += 1
-        language_salary[language] = {
+        payload['text'] = language
+        # print(language)
+        vacancies = get_vacancies(url, payload).json()
+        avg_salary_sum = avg_salary_count = 0
+        # print(vacancies['pages'])
+        for page in range(vacancies['pages']):
+            payload['page'] = page
+            vacancies = get_vacancies(url, payload).json()
+            # print(json.dumps(vacancies, indent=4, sort_keys=True, ensure_ascii=False))
+            for vacancy in vacancies['items']:
+                if vacancy['salary']:
+                    avg_salary_sum += predict_rub_salary(vacancy)
+                    avg_salary_count += 1
+        language_count_salary[language] = {
             "vacancies_found": vacancies['found'],
             "vacancies_processed": avg_salary_count,
             "average_salary": int(avg_salary_sum/avg_salary_count)
         }
-    return language_salary
-
-# for vacancy in vacancies['items']:
-#     if vacancy['salary']:
-#         print(f"{vacancy['name']}, {predict_rub_salary(vacancy)} RUR")
-#     else:
-#         print(f"{vacancy['name']}, SALARY IS NOT SPECIFIED")
-
-# print(f"{vacancy['name']}, {salary_from}, {salary_to}, 'RUR(from {vacancy['salary']['currency']})'")
-# print(f"{vacancy['name']}, {vacancy['salary']['from']}, {vacancy['salary']['to']}
-# {vacancy['salary']['currency']}")
-
-# if vacancy['salary']:
-#     print(f"{vacancy['name']}, {vacancy['salary']['from']}, {vacancy['salary']['to']}"
-#           f"{vacancy['salary']['currency']}")
+    return language_count_salary
 
 
 def predict_rub_salary(vacancy):
@@ -68,14 +58,9 @@ def predict_rub_salary(vacancy):
         avg_salary = salary_from * 1.2
     else:
         avg_salary = (salary_from+salary_to)/2
-
+    if vacancy['salary']['gross']:
+        avg_salary *= 0.87
     return avg_salary  # , vacancy['salary']['from'], vacancy['salary']['to']
-
-
-def get_some_language_salary(language, url, payload):
-    payload['text'] = language
-    vacancies = get_vacancies(url, payload)
-    return vacancies
 
 
 def get_first_language_vacansies(url, payload):
