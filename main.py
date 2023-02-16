@@ -2,7 +2,6 @@ import requests
 # import json
 from environs import Env
 
-
 from settings import programming_languages
 
 
@@ -10,6 +9,8 @@ def main():
     env = Env()
     env.read_env()
     sj_secret_key = env('SJ_SECRET_KEY')
+    sj_login = env('SJ_LOGIN')
+    sj_password = env('SJ_PASSWORD')
 
     # код для HH - временно отключен
     # url = 'https://api.hh.ru/vacancies'
@@ -21,46 +22,70 @@ def main():
     #     'period': 30,
     #     'per_page': 100,
     # }
-    # print(json.dumps((get_all_lang_average_salary(url, payload)), indent=4, ensure_ascii=False))
+    # print(json.dumps((get_hh_all_lang_average_salary(url, payload)), indent=4, ensure_ascii=False))
     # код для HH - временно отключен
 
-    url = 'https://www.superjob.ru/authorize/'
-    # url = 'https://api.superjob.ru/2.0/user/current/'
-    headers = {
-        'X-Api-App-Id': sj_secret_key,
-        # 'Authorization': 'Bearer r.000000000000001.example.token'
+    # авторизация по паролю от личного кабинета - почта, ключник...
+    url = 'https://api.superjob.ru/2.0/oauth2/password/'
+    headers = {}
+    payload = {
+        'login': sj_login,
+        'password': sj_password,
+        'client_id': 2170,
+        'client_secret': sj_secret_key,
+        'hr': 0
+    }
+    response = make_sj_request(url, headers, payload)
+    print(response.json())
+
+    # sj_access_token = response.json()['access_token']
+
+    payload = {
+        'keyword': 'Программист',
+        # 'keywords': (1, 'and', 'Программист'),
+        'period': 0,  # за всё время
+        'town': 4,  # для Москвы
+        'count': 100
     }
 
-    response = get_autorization(url, headers)
-    print(response.text)
+    sj_vacancies = get_sj_vacancies(sj_secret_key, payload).json()
+    for vacancy in sj_vacancies['objects']:
+        print(f"{vacancy['profession']}, {vacancy['payment_from']}, {vacancy['town']['title']},"
+              f"{vacancy['payment_to']}, {vacancy['currency']}")
+    print(f"Вскго: {sj_vacancies['total']}")
+
+    # print(json.dumps(sj_vacancies, indent=4, ensure_ascii=False))
 
 
-    url = 'https://api.superjob.ru/2.0/oauth2/access_token/'
-    response = get_autorization(url, headers)
-    print(response.text)
+def get_sj_vacancies(sj_secret_key, payload):
+    url = '	https://api.superjob.ru/2.0/vacancies/'
+    headers = {'X-Api-App-Id': sj_secret_key}
+    response = make_sj_request(url, headers, payload)
+    print(response.url.title())
+    return response
 
 
-    # url = 'https://api.superjob.ru/2.0/vacancies/'
+def make_sj_request(url, headers, payload=None):
+    response = requests.get(url, headers=headers, params=payload)
+    response.raise_for_status()
+    return response
 
-    # payload = {'some': 'data'}
-    # r = requests.post(url, data=json.dumps(payload), headers=headers)
 
-
-def get_all_lang_average_salary(url, payload):
+def get_hh_all_lang_average_salary(url, payload):
     language_count_salary = {}
     for language in programming_languages:
         payload['text'] = language
         # print(language)
-        vacancies = get_vacancies(url, payload).json()
+        vacancies = get_hh_vacancies(url, payload).json()
         avg_salary_sum = avg_salary_count = 0
         # print(vacancies['pages'])
         for page in range(vacancies['pages']):
             payload['page'] = page
-            vacancies = get_vacancies(url, payload).json()
+            vacancies = get_hh_vacancies(url, payload).json()
             # print(json.dumps(vacancies, indent=4, sort_keys=True, ensure_ascii=False))
             for vacancy in vacancies['items']:
                 if vacancy['salary']:
-                    avg_salary_sum += predict_rub_salary(vacancy)
+                    avg_salary_sum += predict_hh_rub_salary(vacancy)
                     avg_salary_count += 1
         language_count_salary[language] = {
             "vacancies_found": vacancies['found'],
@@ -70,7 +95,7 @@ def get_all_lang_average_salary(url, payload):
     return language_count_salary
 
 
-def predict_rub_salary(vacancy):
+def predict_hh_rub_salary(vacancy):
     exchange_rate = 70
     salary_from = vacancy['salary']['from'] if vacancy['salary']['from'] else 0
     salary_to = vacancy['salary']['to'] if vacancy['salary']['to'] else 0
@@ -91,23 +116,17 @@ def predict_rub_salary(vacancy):
     return avg_salary  # , vacancy['salary']['from'], vacancy['salary']['to']
 
 
-def get_first_language_vacansies(url, payload):
+def get_hh_first_language_vacansies(url, payload):
     languages_info = {}
     for language in programming_languages:
         payload['text'] = language
-        vacancies = get_vacancies(url, payload)
+        vacancies = get_hh_vacancies(url, payload)
         some_language_vacancies = vacancies.json()
         languages_info[language] = some_language_vacancies['found']
     return languages_info
 
 
-def get_autorization(url, headers):
-    response = requests.post(url, headers)
-    response.raise_for_status()
-    return response
-
-
-def get_vacancies(url, payload):
+def get_hh_vacancies(url, payload):
     vacancies = requests.get(url, params=payload)
     vacancies.raise_for_status()
     return vacancies
