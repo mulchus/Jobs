@@ -41,7 +41,8 @@ def main():
     # sj_access_token = response.json()['access_token']
 
     payload = {
-        'keyword': 'Программист',
+        'catalogues': 48,  # Разработка, программирование
+        # 'keyword': 'Программист',
         # 'keywords': (1, 'and', 'Программист'),
         'period': 0,  # за всё время
         'town': 4,  # для Москвы
@@ -50,8 +51,8 @@ def main():
 
     sj_vacancies = get_sj_vacancies(sj_secret_key, payload).json()
     for vacancy in sj_vacancies['objects']:
-        print(f"{vacancy['profession']}, {vacancy['payment_from']}, {vacancy['town']['title']},"
-              f"{vacancy['payment_to']}, {vacancy['currency']}")
+        print(f"{vacancy['profession']}, {vacancy['payment_from']}, {vacancy['payment_to']},"
+              f" {vacancy['town']['title']}, {vacancy['currency']}")
     print(f"Вскго: {sj_vacancies['total']}")
 
     # print(json.dumps(sj_vacancies, indent=4, ensure_ascii=False))
