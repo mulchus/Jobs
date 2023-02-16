@@ -1,21 +1,49 @@
 import requests
-import json
+# import json
+from environs import Env
+
 
 from settings import programming_languages
 
 
 def main():
-    url = 'https://api.hh.ru/vacancies'
-    payload = {
-        'User-Agent': 'MyApp/1.0',
-        'text': 'Python',
-        'search_field': ["name"],  # , "description" надо поиграться с поиском по конкретным полям, ищет где попало
-        'area': 1,
-        'period': 30,
-        'per_page': 100,
+    env = Env()
+    env.read_env()
+    sj_secret_key = env('SJ_SECRET_KEY')
+
+    # код для HH - временно отключен
+    # url = 'https://api.hh.ru/vacancies'
+    # payload = {
+    #     'User-Agent': 'MyApp/1.0',
+    #     'text': 'Python',
+    #     'search_field': ["name"],  # , "description" надо поиграться с поиском по конкретным полям, ищет где попало
+    #     'area': 1,
+    #     'period': 30,
+    #     'per_page': 100,
+    # }
+    # print(json.dumps((get_all_lang_average_salary(url, payload)), indent=4, ensure_ascii=False))
+    # код для HH - временно отключен
+
+    url = 'https://www.superjob.ru/authorize/'
+    # url = 'https://api.superjob.ru/2.0/user/current/'
+    headers = {
+        'X-Api-App-Id': sj_secret_key,
+        # 'Authorization': 'Bearer r.000000000000001.example.token'
     }
 
-    print(json.dumps((get_all_lang_average_salary(url, payload)), indent=4, ensure_ascii=False))
+    response = get_autorization(url, headers)
+    print(response.text)
+
+
+    url = 'https://api.superjob.ru/2.0/oauth2/access_token/'
+    response = get_autorization(url, headers)
+    print(response.text)
+
+
+    # url = 'https://api.superjob.ru/2.0/vacancies/'
+
+    # payload = {'some': 'data'}
+    # r = requests.post(url, data=json.dumps(payload), headers=headers)
 
 
 def get_all_lang_average_salary(url, payload):
@@ -71,6 +99,12 @@ def get_first_language_vacansies(url, payload):
         some_language_vacancies = vacancies.json()
         languages_info[language] = some_language_vacancies['found']
     return languages_info
+
+
+def get_autorization(url, headers):
+    response = requests.post(url, headers)
+    response.raise_for_status()
+    return response
 
 
 def get_vacancies(url, payload):
