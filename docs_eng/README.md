@@ -33,7 +33,7 @@ SJ_PASSWORD=Superjob User Password
 
 ### The command to run the script:
 ```
-python PATH_TO_THE_FOLDER_WITH_SCRIPT\...
+python PATH_TO_THE_FOLDER_WITH_SCRIPT\main.py
 ```
 If you have installed a virtual environment, then the command can be entered without the path to the script.
 
