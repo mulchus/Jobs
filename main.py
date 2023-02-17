@@ -5,6 +5,8 @@ from environs import Env
 from settings import programming_languages
 
 
+EXCHANGE_RATE = 70
+
 def main():
     env = Env()
     env.read_env()
@@ -51,11 +53,35 @@ def main():
 
     sj_vacancies = get_sj_vacancies(sj_secret_key, payload).json()
     for vacancy in sj_vacancies['objects']:
-        print(f"{vacancy['profession']}, {vacancy['payment_from']}, {vacancy['payment_to']},"
-              f" {vacancy['town']['title']}, {vacancy['currency']}")
+        print(f"{vacancy['profession']}, "
+              # f"{int(predict_rub_salary_for_sj(vacancy))},"              
+              f"{vacancy['payment_from']}, {vacancy['payment_to']},"
+              f" {vacancy['currency']}, {vacancy['town']['title']}")
     print(f"Вскго: {sj_vacancies['total']}")
 
     # print(json.dumps(sj_vacancies, indent=4, ensure_ascii=False))
+
+
+def predict_rub_salary_for_sj(vacancy):
+    salary_from = vacancy['payment_from']  # if vacancy['payment_from'] else 0
+    salary_to = vacancy['payment_to']  # if vacancy['payment_to'] else 0
+    if vacancy['currency'] != 'RUR':
+        if vacancy['currency'] == 'USD':
+            # if vacancy['payment_from']:
+            salary_from = vacancy['payment_from'] * EXCHANGE_RATE
+            # if vacancy['salary']['to']:
+            salary_to = vacancy['payment_to'] * EXCHANGE_RATE
+    if not salary_from:
+        avg_salary = salary_to * 0.8
+    elif not salary_to:
+        avg_salary = salary_from * 1.2
+    else:
+        avg_salary = (salary_from+salary_to)/2
+    # if vacancy['gross']:
+    #     avg_salary *= 0.87
+    return avg_salary  # ,
+
+
 
 
 def get_sj_vacancies(sj_secret_key, payload):
@@ -86,7 +112,7 @@ def get_hh_all_lang_average_salary(url, payload):
             # print(json.dumps(vacancies, indent=4, sort_keys=True, ensure_ascii=False))
             for vacancy in vacancies['items']:
                 if vacancy['salary']:
-                    avg_salary_sum += predict_hh_rub_salary(vacancy)
+                    avg_salary_sum += predict_rub_salary_for_hh(vacancy)
                     avg_salary_count += 1
         language_count_salary[language] = {
             "vacancies_found": vacancies['found'],
@@ -96,16 +122,16 @@ def get_hh_all_lang_average_salary(url, payload):
     return language_count_salary
 
 
-def predict_hh_rub_salary(vacancy):
-    exchange_rate = 70
+def predict_rub_salary_for_hh(vacancy):
+    # exchange_rate = 70
     salary_from = vacancy['salary']['from'] if vacancy['salary']['from'] else 0
     salary_to = vacancy['salary']['to'] if vacancy['salary']['to'] else 0
     if vacancy['salary']['currency'] != 'RUR':
         if vacancy['salary']['currency'] == 'USD':
             if vacancy['salary']['from']:
-                salary_from = vacancy['salary']['from'] * exchange_rate
+                salary_from = vacancy['salary']['from'] * EXCHANGE_RATE
             if vacancy['salary']['to']:
-                salary_to = vacancy['salary']['to'] * exchange_rate
+                salary_to = vacancy['salary']['to'] * EXCHANGE_RATE
     if not salary_from:
         avg_salary = salary_to * 0.8
     elif not salary_to:
