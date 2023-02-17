@@ -19,7 +19,7 @@ def main():
     # HeadHunter vacansies getting
     url = 'https://api.hh.ru/vacancies'
     payload = {
-        'User-Agent': 'MyApp/2.0',
+        'User-Agent': 'MyApp/1.0',
         'text': 'Python',
         'search_field': ["name"],  # , "description" надо поиграться с поиском по конкретным полям, ищет где попало
         'area': 1,
