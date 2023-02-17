@@ -1,5 +1,5 @@
 import requests
-# import json
+import json
 from environs import Env
 
 from settings import programming_languages
@@ -44,29 +44,34 @@ def main():
 
     payload = {
         'catalogues': 48,  # Разработка, программирование
-        # 'keyword': 'Программист',
+        'keyword': 'Программист',
         # 'keywords': (1, 'and', 'Программист'),
         'period': 0,  # за всё время
         'town': 4,  # для Москвы
         'count': 100
     }
 
-    sj_vacancies = get_sj_vacancies(sj_secret_key, payload).json()
-    for vacancy in sj_vacancies['objects']:
-        print(f"{vacancy['profession']}, "
-              # f"{int(predict_rub_salary_for_sj(vacancy))},"              
-              f"{vacancy['payment_from']}, {vacancy['payment_to']},"
-              f" {vacancy['currency']}, {vacancy['town']['title']}")
-    print(f"Вскго: {sj_vacancies['total']}")
+
+
+    # sj_vacancies = get_sj_vacancies(sj_secret_key, payload).json()
+    # for vacancy in sj_vacancies['objects']:
+    #     print(f"{vacancy['profession']}, "
+    #           f"{int(predict_rub_salary_for_sj(vacancy))},"
+    #           # f"{vacancy['payment_from']}, {vacancy['payment_to']},"
+    #           f" {vacancy['currency']}, {vacancy['town']['title']}")
+    # print(f"Вскго: {sj_vacancies['total']}")
 
     # print(json.dumps(sj_vacancies, indent=4, ensure_ascii=False))
+
+
+    print(json.dumps((get_sj_all_lang_average_salary(sj_secret_key, payload)), indent=4, ensure_ascii=False))
 
 
 def predict_rub_salary_for_sj(vacancy):
     salary_from = vacancy['payment_from']  # if vacancy['payment_from'] else 0
     salary_to = vacancy['payment_to']  # if vacancy['payment_to'] else 0
-    if vacancy['currency'] != 'RUR':
-        if vacancy['currency'] == 'USD':
+    if vacancy['currency'] != 'rub':
+        if vacancy['currency'] == 'usd':
             # if vacancy['payment_from']:
             salary_from = vacancy['payment_from'] * EXCHANGE_RATE
             # if vacancy['salary']['to']:
@@ -82,13 +87,11 @@ def predict_rub_salary_for_sj(vacancy):
     return avg_salary  # ,
 
 
-
-
 def get_sj_vacancies(sj_secret_key, payload):
-    url = '	https://api.superjob.ru/2.0/vacancies/'
+    url = 'https://api.superjob.ru/2.0/vacancies/'
     headers = {'X-Api-App-Id': sj_secret_key}
     response = make_sj_request(url, headers, payload)
-    print(response.url.title())
+    # print(response.url.title())
     return response
 
 
@@ -98,27 +101,58 @@ def make_sj_request(url, headers, payload=None):
     return response
 
 
+def get_sj_all_lang_average_salary(sj_secret_key, payload):
+    language_count_salary = {}
+    for language in programming_languages:
+        payload['keyword'] = language
+        print(language)
+        vacancies = get_sj_vacancies(sj_secret_key, payload).json()
+        if vacancies['objects']:
+            avg_salary_sum = avg_salary_count = 0
+            # print(vacancies['pages'])
+            vacancies_pages = vacancies['total'] // 100
+            for page in range(vacancies_pages+1):
+                payload['page'] = page
+                vacancies = get_sj_vacancies(sj_secret_key, payload).json()
+                # print(json.dumps(vacancies, indent=4, sort_keys=True, ensure_ascii=False))
+                for vacancy in vacancies['objects']:
+                    if vacancy['payment_from'] or vacancy['payment_to']:
+                        avg_salary_sum += predict_rub_salary_for_sj(vacancy)
+                        avg_salary_count += 1
+            language_count_salary[language] = {
+                "vacancies_found": vacancies['total'],
+                "vacancies_processed": avg_salary_count,
+                "average_salary": int(avg_salary_sum/avg_salary_count)
+            }
+        else:
+            language_count_salary[language] = {"vacancies_found": 'Вакансии не найдены'}
+    return language_count_salary
+
+
 def get_hh_all_lang_average_salary(url, payload):
     language_count_salary = {}
     for language in programming_languages:
         payload['text'] = language
         # print(language)
         vacancies = get_hh_vacancies(url, payload).json()
-        avg_salary_sum = avg_salary_count = 0
-        # print(vacancies['pages'])
-        for page in range(vacancies['pages']):
-            payload['page'] = page
-            vacancies = get_hh_vacancies(url, payload).json()
-            # print(json.dumps(vacancies, indent=4, sort_keys=True, ensure_ascii=False))
-            for vacancy in vacancies['items']:
-                if vacancy['salary']:
-                    avg_salary_sum += predict_rub_salary_for_hh(vacancy)
-                    avg_salary_count += 1
-        language_count_salary[language] = {
-            "vacancies_found": vacancies['found'],
-            "vacancies_processed": avg_salary_count,
-            "average_salary": int(avg_salary_sum/avg_salary_count)
-        }
+        if vacancies['items']:
+            avg_salary_sum = avg_salary_count = 0
+            # print(vacancies['pages'])
+            for page in range(vacancies['pages']):
+                payload['page'] = page
+                vacancies = get_hh_vacancies(url, payload).json()
+                # print(json.dumps(vacancies, indent=4, sort_keys=True, ensure_ascii=False))
+                for vacancy in vacancies['items']:
+                    if vacancy['salary']:
+                        avg_salary_sum += predict_rub_salary_for_hh(vacancy)
+                        avg_salary_count += 1
+            language_count_salary[language] = {
+                "vacancies_found": vacancies['found'],
+                "vacancies_processed": avg_salary_count,
+                "average_salary": int(avg_salary_sum/avg_salary_count)
+            }
+        else:
+            language_count_salary[language] = {"vacancies_found": 'Вакансии не найдены'}
     return language_count_salary
 
 
