@@ -60,22 +60,6 @@ def main():
     print_table(get_average_salary_statistics_in_sj(sj_secret_key, payload), 'SuperJob')
 
 
-def predict_rub_salary_for_sj(vacancy):
-    salary_from = vacancy['payment_from']
-    salary_to = vacancy['payment_to']
-    if vacancy['currency'] != 'rub':
-        if vacancy['currency'] == 'usd':
-            salary_from = vacancy['payment_from'] * EXCHANGE_RATE
-            salary_to = vacancy['payment_to'] * EXCHANGE_RATE
-    if not salary_from:
-        avg_salary = salary_to * RATIO_MIN_SALARY
-    elif not salary_to:
-        avg_salary = salary_from * RATIO_MAX_SALARY
-    else:
-        avg_salary = (salary_from+salary_to)/2
-    return avg_salary
-
-
 def get_sj_vacancies(sj_secret_key, payload):
     url = 'https://api.superjob.ru/2.0/vacancies/'
     headers = {'X-Api-App-Id': sj_secret_key}
@@ -143,24 +127,38 @@ def get_average_salary_statistics_in_hh(url, payload):
     return average_salary_statistics
 
 
+def predict_rub_salary_for_sj(vacancy):
+    salary_from = vacancy['payment_from']
+    salary_to = vacancy['payment_to']
+    if vacancy['currency'] != 'rub':
+        salary_from = vacancy['payment_from'] * EXCHANGE_RATE
+        salary_to = vacancy['payment_to'] * EXCHANGE_RATE
+    average_salary = calculating_the_average_salary(salary_from, salary_to)
+    return average_salary
+
+
 def predict_rub_salary_for_hh(vacancy):
     salary_from = vacancy['salary']['from'] if vacancy['salary']['from'] else 0
     salary_to = vacancy['salary']['to'] if vacancy['salary']['to'] else 0
     if vacancy['salary']['currency'] != 'RUR':
-        if vacancy['salary']['currency'] == 'USD':
-            if vacancy['salary']['from']:
-                salary_from = vacancy['salary']['from'] * EXCHANGE_RATE
-            if vacancy['salary']['to']:
-                salary_to = vacancy['salary']['to'] * EXCHANGE_RATE
-    if not salary_from:
-        avg_salary = salary_to * RATIO_MIN_SALARY
-    elif not salary_to:
-        avg_salary = salary_from * RATIO_MAX_SALARY
-    else:
-        avg_salary = (salary_from+salary_to)/2
+        if vacancy['salary']['from']:
+            salary_from = vacancy['salary']['from'] * EXCHANGE_RATE
+        if vacancy['salary']['to']:
+            salary_to = vacancy['salary']['to'] * EXCHANGE_RATE
+    average_salary = calculating_the_average_salary(salary_from, salary_to)
     if vacancy['salary']['gross']:
-        avg_salary *= RATIO_SALARY_WITHOUT_TAX
-    return avg_salary
+        average_salary *= RATIO_SALARY_WITHOUT_TAX
+    return average_salary
+
+
+def calculating_the_average_salary(salary_from, salary_to):
+    if not salary_from:
+        average_salary = salary_to * RATIO_MIN_SALARY
+    elif not salary_to:
+        average_salary = salary_from * RATIO_MAX_SALARY
+    else:
+        average_salary = (salary_from+salary_to)/2
+    return average_salary
 
 
 def print_table(salary, table_name):
