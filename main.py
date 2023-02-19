@@ -6,6 +6,17 @@ from settings import programming_languages
 
 
 EXCHANGE_RATE = 70
+HH_SEARCH_REGION = 1
+HH_SEARCH_DEPTH_DAYS = 30
+HH_ITEMS_IN_OUTPUT = 100
+SJ_SEARCH_CATALOGUE = 48
+SJ_SEARCH_KEYWORD = ''
+SJ_SEARCH_PERIOD = 30  # 1 — 24 часа, 3 — 3 дня, 7 — неделя, 0 — за все время
+SJ_SEARCH_REGION = 4
+SJ_ITEMS_IN_OUTPUT = 100
+RATIO_MIN_SALARY = 0.8
+RATIO_MAX_SALARY = 1.2
+RATIO_SALARY_WITHOUT_TAX = 0.87
 
 
 def main():
@@ -14,16 +25,17 @@ def main():
     sj_secret_key = env('SJ_SECRET_KEY')
     sj_login = env('SJ_LOGIN')
     sj_password = env('SJ_PASSWORD')
+    sj_client_id = env('SJ_CLIENT_ID')
     programming_languages.reverse()
 
     url = 'https://api.hh.ru/vacancies'
     payload = {
         'User-Agent': 'MyApp/1.0',
-        'text': 'Python',
-        'search_field': ["name"],  # , "description" надо поиграться с поиском по конкретным полям, ищет где попало
-        'area': 1,
-        'period': 30,
-        'per_page': 100,
+        'text': '',
+        'search_field': ["name"],
+        'area': HH_SEARCH_REGION,
+        'period': HH_SEARCH_DEPTH_DAYS,
+        'per_page': HH_ITEMS_IN_OUTPUT,
     }
     hh_salary = (get_for_all_languages_average_salary_hh(url, payload))
     print_table(hh_salary, 'HeadHunter')
@@ -33,19 +45,18 @@ def main():
     payload = {
         'login': sj_login,
         'password': sj_password,
-        'client_id': 2170,
-        'client_secret': sj_secret_key,
-        'hr': 0
+        'client_id': sj_client_id,
+        'client_secret': sj_secret_key
     }
     response = requests.get(url, headers=headers, params=payload)
     response.raise_for_status()
 
     payload = {
-        'catalogues': 48,
-        'keyword': 'Программист',
-        'period': 0,
-        'town': 4,
-        'count': 100
+        'catalogues': SJ_SEARCH_CATALOGUE,
+        'keyword': '',
+        'period': SJ_SEARCH_PERIOD,
+        'town': SJ_SEARCH_REGION,
+        'count': SJ_ITEMS_IN_OUTPUT
     }
     sj_salary = (get_for_all_languages_average_salary_sj(sj_secret_key, payload))
     print_table(sj_salary, 'SuperJob')
@@ -59,9 +70,9 @@ def predict_rub_salary_for_sj(vacancy):
             salary_from = vacancy['payment_from'] * EXCHANGE_RATE
             salary_to = vacancy['payment_to'] * EXCHANGE_RATE
     if not salary_from:
-        avg_salary = salary_to * 0.8
+        avg_salary = salary_to * RATIO_MIN_SALARY
     elif not salary_to:
-        avg_salary = salary_from * 1.2
+        avg_salary = salary_from * RATIO_MAX_SALARY
     else:
         avg_salary = (salary_from+salary_to)/2
     return avg_salary
@@ -90,7 +101,7 @@ def get_for_all_languages_average_salary_sj(sj_secret_key, payload):
         vacancies = get_sj_vacancies(sj_secret_key, payload).json()
         if vacancies['objects']:
             avg_salary_sum = avg_salary_count = 0
-            vacancies_pages = vacancies['total'] // 100
+            vacancies_pages = vacancies['total'] // SJ_ITEMS_IN_OUTPUT
             for page in range(vacancies_pages+1):
                 payload['page'] = page
                 vacancies = get_sj_vacancies(sj_secret_key, payload).json()
@@ -144,13 +155,13 @@ def predict_rub_salary_for_hh(vacancy):
             if vacancy['salary']['to']:
                 salary_to = vacancy['salary']['to'] * EXCHANGE_RATE
     if not salary_from:
-        avg_salary = salary_to * 0.8
+        avg_salary = salary_to * RATIO_MIN_SALARY
     elif not salary_to:
-        avg_salary = salary_from * 1.2
+        avg_salary = salary_from * RATIO_MAX_SALARY
     else:
         avg_salary = (salary_from+salary_to)/2
     if vacancy['salary']['gross']:
-        avg_salary *= 0.87
+        avg_salary *= RATIO_SALARY_WITHOUT_TAX
     return avg_salary
 
 
