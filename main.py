@@ -9,7 +9,6 @@ EXCHANGE_RATE = 70
 HH_SEARCH_REGION = 1
 HH_SEARCH_DEPTH_DAYS = 30
 HH_ITEMS_IN_OUTPUT = 100
-SJ_SEARCH_CATALOGUE = 48
 SJ_SEARCH_KEYWORD = ''
 SJ_SEARCH_PERIOD = 30
 SJ_SEARCH_REGION = 4
@@ -51,7 +50,6 @@ def main():
     response.raise_for_status()
 
     payload = {
-        'catalogues': SJ_SEARCH_CATALOGUE,
         'keyword': '',
         'period': SJ_SEARCH_PERIOD,
         'town': SJ_SEARCH_REGION,
