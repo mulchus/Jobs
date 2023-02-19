@@ -11,7 +11,7 @@ HH_SEARCH_DEPTH_DAYS = 30
 HH_ITEMS_IN_OUTPUT = 100
 SJ_SEARCH_CATALOGUE = 48
 SJ_SEARCH_KEYWORD = ''
-SJ_SEARCH_PERIOD = 30  # 1 — 24 часа, 3 — 3 дня, 7 — неделя, 0 — за все время
+SJ_SEARCH_PERIOD = 30
 SJ_SEARCH_REGION = 4
 SJ_ITEMS_IN_OUTPUT = 100
 RATIO_MIN_SALARY = 0.8
@@ -37,8 +37,7 @@ def main():
         'period': HH_SEARCH_DEPTH_DAYS,
         'per_page': HH_ITEMS_IN_OUTPUT,
     }
-    hh_salary = (get_for_all_languages_average_salary_hh(url, payload))
-    print_table(hh_salary, 'HeadHunter')
+    print_table(get_average_salary_statistics_in_hh(url, payload), 'HeadHunter')
 
     url = 'https://api.superjob.ru/2.0/oauth2/password/'
     headers = {}
@@ -58,8 +57,7 @@ def main():
         'town': SJ_SEARCH_REGION,
         'count': SJ_ITEMS_IN_OUTPUT
     }
-    sj_salary = (get_for_all_languages_average_salary_sj(sj_secret_key, payload))
-    print_table(sj_salary, 'SuperJob')
+    print_table(get_average_salary_statistics_in_sj(sj_secret_key, payload), 'SuperJob')
 
 
 def predict_rub_salary_for_sj(vacancy):
@@ -92,9 +90,9 @@ def get_hh_vacancies(url, payload):
     return vacancies
 
 
-def get_for_all_languages_average_salary_sj(sj_secret_key, payload):
+def get_average_salary_statistics_in_sj(sj_secret_key, payload):
     print('Загружаем вакансии из SuperJob\n по языку: ', end=" ")
-    array_of_languages_average_salary = {}
+    average_salary_statistics = {}
     for language in programming_languages:
         payload['keyword'] = language
         print(f'{language}', end=", ")
@@ -109,19 +107,19 @@ def get_for_all_languages_average_salary_sj(sj_secret_key, payload):
                     if vacancy['payment_from'] or vacancy['payment_to']:
                         avg_salary_sum += predict_rub_salary_for_sj(vacancy)
                         avg_salary_count += 1
-            array_of_languages_average_salary[language] = {
+            average_salary_statistics[language] = {
                 "vacancies_found": vacancies['total'],
                 "vacancies_processed": avg_salary_count,
                 "average_salary": int(avg_salary_sum/avg_salary_count)
             }
         else:
-            array_of_languages_average_salary[language] = {"vacancies_found": 'Вакансии не найдены'}
-    return array_of_languages_average_salary
+            average_salary_statistics[language] = {"vacancies_found": 'Вакансии не найдены'}
+    return average_salary_statistics
 
 
-def get_for_all_languages_average_salary_hh(url, payload):
+def get_average_salary_statistics_in_hh(url, payload):
     print('Загружаем вакансии из HeadHunter\n по языку: ', end=" ")
-    array_of_languages_average_salary = {}
+    average_salary_statistics = {}
     for language in programming_languages:
         payload['text'] = language
         print(f'{language}', end=", ")
@@ -135,14 +133,14 @@ def get_for_all_languages_average_salary_hh(url, payload):
                     if vacancy['salary']:
                         avg_salary_sum += predict_rub_salary_for_hh(vacancy)
                         avg_salary_count += 1
-            array_of_languages_average_salary[language] = {
+            average_salary_statistics[language] = {
                 "vacancies_found": vacancies['found'],
                 "vacancies_processed": avg_salary_count,
                 "average_salary": int(avg_salary_sum/avg_salary_count)
             }
         else:
-            array_of_languages_average_salary[language] = {"vacancies_found": 'Вакансии не найдены'}
-    return array_of_languages_average_salary
+            average_salary_statistics[language] = {"vacancies_found": 'Вакансии не найдены'}
+    return average_salary_statistics
 
 
 def predict_rub_salary_for_hh(vacancy):
@@ -168,15 +166,15 @@ def predict_rub_salary_for_hh(vacancy):
 def print_table(salary, table_name):
     formatted_salary_block = ()
     for language, vacancies_items in salary.items():
-        b = c = ''
+        column_three = column_fourth = ''
         if 'vacancies_processed' not in vacancies_items:
-            a = 'Вакансии не найдены'
+            column_two = 'Вакансии не найдены'
         else:
-            a, b, c = vacancies_items.values()
-        formatted_salary_block += ((language, a, b, c),)
-    table_data = (('Язык программирования', 'Вакансий найдено', 'Вакансий обработано', 'Средняя зарплата'), )
-    table_data += formatted_salary_block
-    table_instance = SingleTable(table_data, table_name)
+            column_two, column_three, column_fourth = vacancies_items.values()
+        formatted_salary_block += ((language, column_two, column_three, column_fourth),)
+    columns_names = (('Язык программирования', 'Вакансий найдено', 'Вакансий обработано', 'Средняя зарплата'),)
+    columns_names += formatted_salary_block
+    table_instance = SingleTable(columns_names, table_name)
     for i in range(4):
         table_instance.justify_columns[i] = 'center'
     print()
