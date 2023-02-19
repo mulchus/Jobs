@@ -79,15 +79,15 @@ def predict_rub_salary_for_sj(vacancy):
 def get_sj_vacancies(sj_secret_key, payload):
     url = 'https://api.superjob.ru/2.0/vacancies/'
     headers = {'X-Api-App-Id': sj_secret_key}
-    response = requests.get(url, headers=headers, params=payload)
-    response.raise_for_status()
-    return response
+    vacancies = requests.get(url, headers=headers, params=payload)
+    vacancies.raise_for_status()
+    return vacancies.json()
 
 
 def get_hh_vacancies(url, payload):
     vacancies = requests.get(url, params=payload)
     vacancies.raise_for_status()
-    return vacancies
+    return vacancies.json()
 
 
 def get_average_salary_statistics_in_sj(sj_secret_key, payload):
@@ -96,13 +96,13 @@ def get_average_salary_statistics_in_sj(sj_secret_key, payload):
     for language in programming_languages:
         payload['keyword'] = language
         print(f'{language}', end=", ")
-        vacancies = get_sj_vacancies(sj_secret_key, payload).json()
+        vacancies = get_sj_vacancies(sj_secret_key, payload)
         if vacancies['objects']:
             avg_salary_sum = avg_salary_count = 0
             vacancies_pages = vacancies['total'] // SJ_ITEMS_IN_OUTPUT
             for page in range(vacancies_pages+1):
                 payload['page'] = page
-                vacancies = get_sj_vacancies(sj_secret_key, payload).json()
+                vacancies = get_sj_vacancies(sj_secret_key, payload)
                 for vacancy in vacancies['objects']:
                     if vacancy['payment_from'] or vacancy['payment_to']:
                         avg_salary_sum += predict_rub_salary_for_sj(vacancy)
@@ -123,12 +123,12 @@ def get_average_salary_statistics_in_hh(url, payload):
     for language in programming_languages:
         payload['text'] = language
         print(f'{language}', end=", ")
-        vacancies = get_hh_vacancies(url, payload).json()
+        vacancies = get_hh_vacancies(url, payload)
         if vacancies['items']:
             avg_salary_sum = avg_salary_count = 0
             for page in range(vacancies['pages']):
                 payload['page'] = page
-                vacancies = get_hh_vacancies(url, payload).json()
+                vacancies = get_hh_vacancies(url, payload)
                 for vacancy in vacancies['items']:
                     if vacancy['salary']:
                         avg_salary_sum += predict_rub_salary_for_hh(vacancy)
