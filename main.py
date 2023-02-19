@@ -16,7 +16,6 @@ def main():
     sj_password = env('SJ_PASSWORD')
     programming_languages.reverse()
 
-    # HeadHunter vacansies getting
     url = 'https://api.hh.ru/vacancies'
     payload = {
         'User-Agent': 'MyApp/1.0',
@@ -29,7 +28,6 @@ def main():
     hh_salary = (get_for_all_languages_average_salary_hh(url, payload))
     print_table(hh_salary, 'HeadHunter')
 
-    # авторизация SuperJob по паролю от личного кабинета - почта, ключник...
     url = 'https://api.superjob.ru/2.0/oauth2/password/'
     headers = {}
     payload = {
@@ -42,13 +40,11 @@ def main():
     response = requests.get(url, headers=headers, params=payload)
     response.raise_for_status()
 
-    # SuperJob vacansies getting
     payload = {
-        'catalogues': 48,  # Разработка, программирование
+        'catalogues': 48,
         'keyword': 'Программист',
-        # 'keywords': (1, 'and', 'Программист'),
-        'period': 0,  # за всё время
-        'town': 4,  # для Москвы
+        'period': 0,
+        'town': 4,
         'count': 100
     }
     sj_salary = (get_for_all_languages_average_salary_sj(sj_secret_key, payload))
