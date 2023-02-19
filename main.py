@@ -171,8 +171,8 @@ def print_table(salary, table_name):
     columns_names = (('Язык программирования', 'Вакансий найдено', 'Вакансий обработано', 'Средняя зарплата'),)
     columns_names += formatted_salary_block
     table_instance = SingleTable(columns_names, table_name)
-    for i in range(4):
-        table_instance.justify_columns[i] = 'center'
+    for column_number in range(4):
+        table_instance.justify_columns[column_number] = 'center'
     print()
     print(table_instance.table)
     print()
