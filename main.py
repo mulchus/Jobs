@@ -88,10 +88,11 @@ def get_average_salary_statistics_in_sj(sj_secret_key, payload, exchange_rates):
                     continue
                 avg_salary_sum += predict_salary_in_rubles_for_sj(vacancy, exchange_rates)
                 avg_salary_count += 1
+        average_salary = check_division_by_zero(avg_salary_sum, avg_salary_count)
         average_salary_statistics[language] = {
             "vacancies_found": vacancies['total'],
             "vacancies_processed": avg_salary_count,
-            "average_salary": int(avg_salary_sum/avg_salary_count)
+            "average_salary": average_salary
         }
     return average_salary_statistics
 
@@ -115,12 +116,21 @@ def get_average_salary_statistics_in_hh(url, payload, exchange_rates):
                     continue
                 avg_salary_sum += predict_salary_in_rubles_for_hh(vacancy, exchange_rates)
                 avg_salary_count += 1
+        average_salary = check_division_by_zero(avg_salary_sum, avg_salary_count)
         average_salary_statistics[language] = {
             "vacancies_found": vacancies['found'],
             "vacancies_processed": avg_salary_count,
-            "average_salary": int(avg_salary_sum/avg_salary_count)
+            "average_salary": average_salary
         }
     return average_salary_statistics
+
+
+def check_division_by_zero(avg_salary_sum, avg_salary_count):
+    try:
+        average_salary = int(avg_salary_sum / avg_salary_count)
+    except ZeroDivisionError:
+        average_salary = 'Ошибка вычисления'
+    return average_salary
 
 
 def predict_salary_in_rubles_for_sj(vacancy, exchange_rates):
