@@ -60,27 +60,21 @@ def main():
     print_table(get_average_salary_statistics_in_sj(sj_secret_key, payload, exchange_rates), 'SuperJob')
 
 
-def get_sj_vacancies(sj_secret_key, payload):
-    url = 'https://api.superjob.ru/2.0/vacancies/'
-    headers = {'X-Api-App-Id': sj_secret_key}
+def get_vacancies(url, headers, payload):
     vacancies = requests.get(url, headers=headers, params=payload)
     vacancies.raise_for_status()
     return vacancies.json()
 
 
-def get_hh_vacancies(url, payload):
-    vacancies = requests.get(url, params=payload)
-    vacancies.raise_for_status()
-    return vacancies.json()
-
-
 def get_average_salary_statistics_in_sj(sj_secret_key, payload, exchange_rates):
+    url = 'https://api.superjob.ru/2.0/vacancies/'
+    headers = {'X-Api-App-Id': sj_secret_key}
     print('Загружаем вакансии из SuperJob\n по языку: ', end=" ")
     average_salary_statistics = {}
     for language in programming_languages:
         payload['keyword'] = language
         print(f'{language}', end=", ")
-        vacancies = get_sj_vacancies(sj_secret_key, payload)
+        vacancies = get_vacancies(url, headers, payload)
         if not vacancies['objects']:
             average_salary_statistics[language] = {"vacancies_found": 'Вакансии не найдены'}
             continue
@@ -88,7 +82,7 @@ def get_average_salary_statistics_in_sj(sj_secret_key, payload, exchange_rates):
         number_of_vacancies_pages = vacancies['total'] // SJ_VACANCIES_IN_OUTPUT
         for page in range(number_of_vacancies_pages+1):
             payload['page'] = page
-            vacancies = get_sj_vacancies(sj_secret_key, payload)
+            vacancies = get_vacancies(url, headers, payload)
             for vacancy in vacancies['objects']:
                 if not vacancy['payment_from'] and not vacancy['payment_to']:
                     continue
@@ -108,14 +102,14 @@ def get_average_salary_statistics_in_hh(url, payload, exchange_rates):
     for language in programming_languages:
         payload['text'] = language
         print(f'{language}', end=", ")
-        vacancies = get_hh_vacancies(url, payload)
+        vacancies = get_vacancies(url, '', payload)
         if not vacancies['items']:
             average_salary_statistics[language] = {"vacancies_found": 'Вакансии не найдены'}
             continue
         avg_salary_sum = avg_salary_count = 0
         for page in range(vacancies['pages']):
             payload['page'] = page
-            vacancies = get_hh_vacancies(url, payload)
+            vacancies = get_vacancies(url, '', payload)
             for vacancy in vacancies['items']:
                 if not vacancy['salary']:
                     continue
