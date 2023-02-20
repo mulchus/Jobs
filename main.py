@@ -5,7 +5,6 @@ from terminaltables import SingleTable
 from settings import programming_languages
 
 
-EXCHANGE_RATE = 70
 HH_SEARCH_REGION = 1
 HH_SEARCH_DEPTH_DAYS = 30
 HH_VACANCIES_IN_OUTPUT = 100
@@ -16,7 +15,11 @@ SJ_VACANCIES_IN_OUTPUT = 100
 RATIO_MIN_SALARY = 0.8
 RATIO_MAX_SALARY = 1.2
 RATIO_SALARY_WITHOUT_TAX = 0.87
-
+SJ_CURRENCY_NAME = {
+            0: "rub",
+            1: "uah",
+            2: "uzs"
+}
 
 def main():
     env = Env()
@@ -27,6 +30,10 @@ def main():
     sj_client_id = env('SJ_CLIENT_ID')
     programming_languages.reverse()
 
+    exchange_rates = requests.get('https://www.cbr-xml-daily.ru/daily_json.js')
+    exchange_rates.raise_for_status()
+    exchange_rates = exchange_rates.json()
+
     url = 'https://api.hh.ru/vacancies'
     payload = {
         'User-Agent': 'MyApp/1.0',
@@ -36,7 +43,7 @@ def main():
         'period': HH_SEARCH_DEPTH_DAYS,
         'per_page': HH_VACANCIES_IN_OUTPUT,
     }
-    print_table(get_average_salary_statistics_in_hh(url, payload), 'HeadHunter')
+    print_table(get_average_salary_statistics_in_hh(url, payload, exchange_rates), 'HeadHunter')
 
     url = 'https://api.superjob.ru/2.0/oauth2/password/'
     headers = {}
@@ -55,7 +62,7 @@ def main():
         'town': SJ_SEARCH_REGION,
         'count': SJ_VACANCIES_IN_OUTPUT
     }
-    print_table(get_average_salary_statistics_in_sj(sj_secret_key, payload), 'SuperJob')
+    print_table(get_average_salary_statistics_in_sj(sj_secret_key, payload, exchange_rates), 'SuperJob')
 
 
 def get_sj_vacancies(sj_secret_key, payload):
@@ -72,7 +79,7 @@ def get_hh_vacancies(url, payload):
     return vacancies.json()
 
 
-def get_average_salary_statistics_in_sj(sj_secret_key, payload):
+def get_average_salary_statistics_in_sj(sj_secret_key, payload, exchange_rates):
     print('Загружаем вакансии из SuperJob\n по языку: ', end=" ")
     average_salary_statistics = {}
     for language in programming_languages:
@@ -90,7 +97,7 @@ def get_average_salary_statistics_in_sj(sj_secret_key, payload):
             for vacancy in vacancies['objects']:
                 if not vacancy['payment_from'] and not vacancy['payment_to']:
                     continue
-                avg_salary_sum += predict_rub_salary_for_sj(vacancy)
+                avg_salary_sum += predict_rub_salary_for_sj(vacancy, exchange_rates)
                 avg_salary_count += 1
         average_salary_statistics[language] = {
             "vacancies_found": vacancies['total'],
@@ -100,7 +107,7 @@ def get_average_salary_statistics_in_sj(sj_secret_key, payload):
     return average_salary_statistics
 
 
-def get_average_salary_statistics_in_hh(url, payload):
+def get_average_salary_statistics_in_hh(url, payload, exchange_rates):
     print('Загружаем вакансии из HeadHunter\n по языку: ', end=" ")
     average_salary_statistics = {}
     for language in programming_languages:
@@ -117,7 +124,7 @@ def get_average_salary_statistics_in_hh(url, payload):
             for vacancy in vacancies['items']:
                 if not vacancy['salary']:
                     continue
-                avg_salary_sum += predict_rub_salary_for_hh(vacancy)
+                avg_salary_sum += predict_rub_salary_for_hh(vacancy, exchange_rates)
                 avg_salary_count += 1
         average_salary_statistics[language] = {
             "vacancies_found": vacancies['found'],
@@ -127,24 +134,26 @@ def get_average_salary_statistics_in_hh(url, payload):
     return average_salary_statistics
 
 
-def predict_rub_salary_for_sj(vacancy):
+def predict_rub_salary_for_sj(vacancy, exchange_rates):
     salary_from = vacancy['payment_from']
     salary_to = vacancy['payment_to']
     if vacancy['currency'] != 'rub':
-        salary_from = vacancy['payment_from'] * EXCHANGE_RATE
-        salary_to = vacancy['payment_to'] * EXCHANGE_RATE
+        exchange_rate = exchange_rates['Valute'][(vacancy['currency']).upper()]['Value']
+        salary_from = vacancy['payment_from'] * exchange_rate
+        salary_to = vacancy['payment_to'] * exchange_rate
     average_salary = calculating_the_average_salary(salary_from, salary_to)
     return average_salary
 
 
-def predict_rub_salary_for_hh(vacancy):
+def predict_rub_salary_for_hh(vacancy, exchange_rates):
     salary_from = vacancy['salary']['from'] if vacancy['salary']['from'] else 0
     salary_to = vacancy['salary']['to'] if vacancy['salary']['to'] else 0
     if vacancy['salary']['currency'] != 'RUR':
+        exchange_rate = exchange_rates['Valute'][vacancy['salary']['currency']]['Value']
         if vacancy['salary']['from']:
-            salary_from = vacancy['salary']['from'] * EXCHANGE_RATE
+            salary_from = vacancy['salary']['from'] * exchange_rate
         if vacancy['salary']['to']:
-            salary_to = vacancy['salary']['to'] * EXCHANGE_RATE
+            salary_to = vacancy['salary']['to'] * exchange_rate
     average_salary = calculating_the_average_salary(salary_from, salary_to)
     if vacancy['salary']['gross']:
         average_salary *= RATIO_SALARY_WITHOUT_TAX
