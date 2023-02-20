@@ -8,11 +8,11 @@ from settings import programming_languages
 EXCHANGE_RATE = 70
 HH_SEARCH_REGION = 1
 HH_SEARCH_DEPTH_DAYS = 30
-HH_ITEMS_IN_OUTPUT = 100
+HH_VACANCIES_IN_OUTPUT = 100
 SJ_SEARCH_KEYWORD = ''
 SJ_SEARCH_PERIOD = 30
 SJ_SEARCH_REGION = 4
-SJ_ITEMS_IN_OUTPUT = 100
+SJ_VACANCIES_IN_OUTPUT = 100
 RATIO_MIN_SALARY = 0.8
 RATIO_MAX_SALARY = 1.2
 RATIO_SALARY_WITHOUT_TAX = 0.87
@@ -34,7 +34,7 @@ def main():
         'search_field': ["name"],
         'area': HH_SEARCH_REGION,
         'period': HH_SEARCH_DEPTH_DAYS,
-        'per_page': HH_ITEMS_IN_OUTPUT,
+        'per_page': HH_VACANCIES_IN_OUTPUT,
     }
     print_table(get_average_salary_statistics_in_hh(url, payload), 'HeadHunter')
 
@@ -53,7 +53,7 @@ def main():
         'keyword': '',
         'period': SJ_SEARCH_PERIOD,
         'town': SJ_SEARCH_REGION,
-        'count': SJ_ITEMS_IN_OUTPUT
+        'count': SJ_VACANCIES_IN_OUTPUT
     }
     print_table(get_average_salary_statistics_in_sj(sj_secret_key, payload), 'SuperJob')
 
@@ -79,23 +79,24 @@ def get_average_salary_statistics_in_sj(sj_secret_key, payload):
         payload['keyword'] = language
         print(f'{language}', end=", ")
         vacancies = get_sj_vacancies(sj_secret_key, payload)
-        if vacancies['objects']:
-            avg_salary_sum = avg_salary_count = 0
-            vacancies_pages = vacancies['total'] // SJ_ITEMS_IN_OUTPUT
-            for page in range(vacancies_pages+1):
-                payload['page'] = page
-                vacancies = get_sj_vacancies(sj_secret_key, payload)
-                for vacancy in vacancies['objects']:
-                    if vacancy['payment_from'] or vacancy['payment_to']:
-                        avg_salary_sum += predict_rub_salary_for_sj(vacancy)
-                        avg_salary_count += 1
-            average_salary_statistics[language] = {
-                "vacancies_found": vacancies['total'],
-                "vacancies_processed": avg_salary_count,
-                "average_salary": int(avg_salary_sum/avg_salary_count)
-            }
-        else:
+        if not vacancies['objects']:
             average_salary_statistics[language] = {"vacancies_found": 'Вакансии не найдены'}
+            continue
+        avg_salary_sum = avg_salary_count = 0
+        number_of_vacancies_pages = vacancies['total'] // SJ_VACANCIES_IN_OUTPUT
+        for page in range(number_of_vacancies_pages+1):
+            payload['page'] = page
+            vacancies = get_sj_vacancies(sj_secret_key, payload)
+            for vacancy in vacancies['objects']:
+                if not vacancy['payment_from'] and not vacancy['payment_to']:
+                    continue
+                avg_salary_sum += predict_rub_salary_for_sj(vacancy)
+                avg_salary_count += 1
+        average_salary_statistics[language] = {
+            "vacancies_found": vacancies['total'],
+            "vacancies_processed": avg_salary_count,
+            "average_salary": int(avg_salary_sum/avg_salary_count)
+        }
     return average_salary_statistics
 
 
@@ -106,22 +107,23 @@ def get_average_salary_statistics_in_hh(url, payload):
         payload['text'] = language
         print(f'{language}', end=", ")
         vacancies = get_hh_vacancies(url, payload)
-        if vacancies['items']:
-            avg_salary_sum = avg_salary_count = 0
-            for page in range(vacancies['pages']):
-                payload['page'] = page
-                vacancies = get_hh_vacancies(url, payload)
-                for vacancy in vacancies['items']:
-                    if vacancy['salary']:
-                        avg_salary_sum += predict_rub_salary_for_hh(vacancy)
-                        avg_salary_count += 1
-            average_salary_statistics[language] = {
-                "vacancies_found": vacancies['found'],
-                "vacancies_processed": avg_salary_count,
-                "average_salary": int(avg_salary_sum/avg_salary_count)
-            }
-        else:
+        if not vacancies['items']:
             average_salary_statistics[language] = {"vacancies_found": 'Вакансии не найдены'}
+            continue
+        avg_salary_sum = avg_salary_count = 0
+        for page in range(vacancies['pages']):
+            payload['page'] = page
+            vacancies = get_hh_vacancies(url, payload)
+            for vacancy in vacancies['items']:
+                if not vacancy['salary']:
+                    continue
+                avg_salary_sum += predict_rub_salary_for_hh(vacancy)
+                avg_salary_count += 1
+        average_salary_statistics[language] = {
+            "vacancies_found": vacancies['found'],
+            "vacancies_processed": avg_salary_count,
+            "average_salary": int(avg_salary_sum/avg_salary_count)
+        }
     return average_salary_statistics
 
 
@@ -161,12 +163,12 @@ def calculating_the_average_salary(salary_from, salary_to):
 
 def print_table(salary, table_name):
     formatted_salary_block = ()
-    for language, vacancies_items in salary.items():
+    for language, vacancies_statistic in salary.items():
         column_three = column_fourth = ''
-        if 'vacancies_processed' not in vacancies_items:
+        if 'vacancies_processed' not in vacancies_statistic:
             column_two = 'Вакансии не найдены'
         else:
-            column_two, column_three, column_fourth = vacancies_items.values()
+            column_two, column_three, column_fourth = vacancies_statistic.values()
         formatted_salary_block += ((language, column_two, column_three, column_fourth),)
     columns_names = (('Язык программирования', 'Вакансий найдено', 'Вакансий обработано', 'Средняя зарплата'),)
     columns_names += formatted_salary_block
