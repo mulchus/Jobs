@@ -15,11 +15,7 @@ SJ_VACANCIES_IN_OUTPUT = 100
 RATIO_MIN_SALARY = 0.8
 RATIO_MAX_SALARY = 1.2
 RATIO_SALARY_WITHOUT_TAX = 0.87
-SJ_CURRENCY_NAME = {
-            0: "rub",
-            1: "uah",
-            2: "uzs"
-}
+
 
 def main():
     env = Env()
@@ -97,7 +93,7 @@ def get_average_salary_statistics_in_sj(sj_secret_key, payload, exchange_rates):
             for vacancy in vacancies['objects']:
                 if not vacancy['payment_from'] and not vacancy['payment_to']:
                     continue
-                avg_salary_sum += predict_rub_salary_for_sj(vacancy, exchange_rates)
+                avg_salary_sum += predict_salary_in_rubles_for_sj(vacancy, exchange_rates)
                 avg_salary_count += 1
         average_salary_statistics[language] = {
             "vacancies_found": vacancies['total'],
@@ -124,7 +120,7 @@ def get_average_salary_statistics_in_hh(url, payload, exchange_rates):
             for vacancy in vacancies['items']:
                 if not vacancy['salary']:
                     continue
-                avg_salary_sum += predict_rub_salary_for_hh(vacancy, exchange_rates)
+                avg_salary_sum += predict_salary_in_rubles_for_hh(vacancy, exchange_rates)
                 avg_salary_count += 1
         average_salary_statistics[language] = {
             "vacancies_found": vacancies['found'],
@@ -134,18 +130,18 @@ def get_average_salary_statistics_in_hh(url, payload, exchange_rates):
     return average_salary_statistics
 
 
-def predict_rub_salary_for_sj(vacancy, exchange_rates):
+def predict_salary_in_rubles_for_sj(vacancy, exchange_rates):
     salary_from = vacancy['payment_from']
     salary_to = vacancy['payment_to']
     if vacancy['currency'] != 'rub':
         exchange_rate = exchange_rates['Valute'][(vacancy['currency']).upper()]['Value']
         salary_from = vacancy['payment_from'] * exchange_rate
         salary_to = vacancy['payment_to'] * exchange_rate
-    average_salary = calculating_the_average_salary(salary_from, salary_to)
+    average_salary = calculate_average_salary(salary_from, salary_to)
     return average_salary
 
 
-def predict_rub_salary_for_hh(vacancy, exchange_rates):
+def predict_salary_in_rubles_for_hh(vacancy, exchange_rates):
     salary_from = vacancy['salary']['from'] if vacancy['salary']['from'] else 0
     salary_to = vacancy['salary']['to'] if vacancy['salary']['to'] else 0
     if vacancy['salary']['currency'] != 'RUR':
@@ -154,13 +150,13 @@ def predict_rub_salary_for_hh(vacancy, exchange_rates):
             salary_from = vacancy['salary']['from'] * exchange_rate
         if vacancy['salary']['to']:
             salary_to = vacancy['salary']['to'] * exchange_rate
-    average_salary = calculating_the_average_salary(salary_from, salary_to)
+    average_salary = calculate_average_salary(salary_from, salary_to)
     if vacancy['salary']['gross']:
         average_salary *= RATIO_SALARY_WITHOUT_TAX
     return average_salary
 
 
-def calculating_the_average_salary(salary_from, salary_to):
+def calculate_average_salary(salary_from, salary_to):
     if not salary_from:
         average_salary = salary_to * RATIO_MIN_SALARY
     elif not salary_to:
