@@ -52,7 +52,6 @@ def main():
     response.raise_for_status()
 
     payload = {
-        'keyword': '',
         'period': SJ_SEARCH_PERIOD,
         'town': SJ_SEARCH_REGION,
         'count': SJ_VACANCIES_IN_OUTPUT
@@ -72,28 +71,31 @@ def get_average_salary_statistics_in_sj(sj_secret_key, payload, exchange_rates):
     print('Загружаем вакансии из SuperJob\n по языку: ', end=" ")
     average_salary_statistics = {}
     for language in programming_languages:
-        payload['keyword'] = language
+        payload['keyword'] = f'Программист {language}'
         print(f'{language}', end=", ")
-        vacancies = get_vacancies(url, headers, payload)
-        if not vacancies['objects']:
-            average_salary_statistics[language] = {"vacancies_found": 'Вакансии не найдены'}
-            continue
-        avg_salary_sum = avg_salary_count = 0
-        number_of_vacancies_pages = vacancies['total'] // SJ_VACANCIES_IN_OUTPUT
-        for page in range(number_of_vacancies_pages+1):
+        page = avg_salary_sum = avg_salary_count = 0
+        while True:
             payload['page'] = page
             vacancies = get_vacancies(url, headers, payload)
+            if not vacancies['objects']:
+                average_salary_statistics[language] = {"vacancies_found": 'Вакансии не найдены'}
+                break
             for vacancy in vacancies['objects']:
                 if not vacancy['payment_from'] and not vacancy['payment_to']:
                     continue
                 avg_salary_sum += predict_salary_in_rubles_for_sj(vacancy, exchange_rates)
                 avg_salary_count += 1
-        average_salary = check_division_by_zero(avg_salary_sum, avg_salary_count)
-        average_salary_statistics[language] = {
-            "vacancies_found": vacancies['total'],
-            "vacancies_processed": avg_salary_count,
-            "average_salary": average_salary
-        }
+            number_of_vacancies_pages = vacancies['total'] // SJ_VACANCIES_IN_OUTPUT
+            if page < number_of_vacancies_pages-1:
+                page += 1
+            else:
+                average_salary = check_division_by_zero(avg_salary_sum, avg_salary_count)
+                average_salary_statistics[language] = {
+                    "vacancies_found": vacancies['total'],
+                    "vacancies_processed": avg_salary_count,
+                    "average_salary": average_salary
+                }
+                break
     return average_salary_statistics
 
 
@@ -101,27 +103,30 @@ def get_average_salary_statistics_in_hh(url, payload, exchange_rates):
     print('Загружаем вакансии из HeadHunter\n по языку: ', end=" ")
     average_salary_statistics = {}
     for language in programming_languages:
-        payload['text'] = language
+        payload['text'] = f'Программист {language}'
         print(f'{language}', end=", ")
-        vacancies = get_vacancies(url, '', payload)
-        if not vacancies['items']:
-            average_salary_statistics[language] = {"vacancies_found": 'Вакансии не найдены'}
-            continue
-        avg_salary_sum = avg_salary_count = 0
-        for page in range(vacancies['pages']):
+        page = avg_salary_sum = avg_salary_count = 0
+        while True:
             payload['page'] = page
             vacancies = get_vacancies(url, '', payload)
+            if not vacancies['items']:
+                average_salary_statistics[language] = {"vacancies_found": 'Вакансии не найдены'}
+                break
             for vacancy in vacancies['items']:
                 if not vacancy['salary']:
                     continue
                 avg_salary_sum += predict_salary_in_rubles_for_hh(vacancy, exchange_rates)
                 avg_salary_count += 1
-        average_salary = check_division_by_zero(avg_salary_sum, avg_salary_count)
-        average_salary_statistics[language] = {
-            "vacancies_found": vacancies['found'],
-            "vacancies_processed": avg_salary_count,
-            "average_salary": average_salary
-        }
+            if page < vacancies['pages']-1:
+                page += 1
+            else:
+                average_salary = check_division_by_zero(avg_salary_sum, avg_salary_count)
+                average_salary_statistics[language] = {
+                    "vacancies_found": vacancies['found'],
+                    "vacancies_processed": avg_salary_count,
+                    "average_salary": average_salary
+                }
+                break
     return average_salary_statistics
 
 
