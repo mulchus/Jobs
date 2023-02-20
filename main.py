@@ -42,14 +42,13 @@ def main():
     print_table(get_average_salary_statistics_in_hh(url, payload, exchange_rates), 'HeadHunter')
 
     url = 'https://api.superjob.ru/2.0/oauth2/password/'
-    headers = {}
     payload = {
         'login': sj_login,
         'password': sj_password,
         'client_id': sj_client_id,
         'client_secret': sj_secret_key
     }
-    response = requests.get(url, headers=headers, params=payload)
+    response = requests.get(url, params=payload)
     response.raise_for_status()
 
     payload = {
