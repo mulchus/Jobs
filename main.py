@@ -86,9 +86,7 @@ def get_average_salary_statistics_in_sj(sj_secret_key, payload, exchange_rates):
                 avg_salary_sum += predict_salary_in_rubles_for_sj(vacancy, exchange_rates)
                 avg_salary_count += 1
             number_of_vacancies_pages = vacancies['total'] // SJ_VACANCIES_IN_OUTPUT
-            if page < number_of_vacancies_pages-1:
-                page += 1
-            else:
+            if page >= number_of_vacancies_pages-1:
                 average_salary = check_division_by_zero(avg_salary_sum, avg_salary_count)
                 average_salary_statistics[language] = {
                     "vacancies_found": vacancies['total'],
@@ -96,6 +94,7 @@ def get_average_salary_statistics_in_sj(sj_secret_key, payload, exchange_rates):
                     "average_salary": average_salary
                 }
                 break
+            page += 1
     return average_salary_statistics
 
 
@@ -117,9 +116,7 @@ def get_average_salary_statistics_in_hh(url, payload, exchange_rates):
                     continue
                 avg_salary_sum += predict_salary_in_rubles_for_hh(vacancy, exchange_rates)
                 avg_salary_count += 1
-            if page < vacancies['pages']-1:
-                page += 1
-            else:
+            if page >= vacancies['pages']-1:
                 average_salary = check_division_by_zero(avg_salary_sum, avg_salary_count)
                 average_salary_statistics[language] = {
                     "vacancies_found": vacancies['found'],
@@ -127,6 +124,7 @@ def get_average_salary_statistics_in_hh(url, payload, exchange_rates):
                     "average_salary": average_salary
                 }
                 break
+            page += 1
     return average_salary_statistics
 
 
